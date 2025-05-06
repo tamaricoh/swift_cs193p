@@ -3,22 +3,21 @@
 //  Task1
 //
 //  Created by Tamar Cohen on 29/04/2025.
-//
+// 
 
 import SwiftUI
 
-let heartEmojis: [String] = ["❤️", "🧡", "💛", "💚", "💙", "💜"]
-let girlyEmojis: [String] =  ["💄", "💅", "👠", "🎀", "👡", "🌸", "💍"]
-let pinkEmojis: [String] = ["💖", "🌸", "🎀", "🩷", "💐", "🛍️", "👚", "👛"]
-
-
 struct ContentView: View {
+
+    private static let heartEmojis: [String] = ["❤️", "🧡", "💛", "💚", "💙", "💜"]
+    private static let girlyEmojis: [String] =  ["💄", "💅", "👠", "🎀", "👡", "🌸", "💍"]
+    private static let pinkEmojis: [String] = ["💖", "🌸", "🎀", "🩷", "💐", "🛍️", "👚", "👛"]
     
     @State var emojis : [String] = []
     @State var color : Color = .accentColor
 
     let themesCount = 3
-    let themes: [Theme] = [
+    let themes = [
         Theme(name: "Hearts", emojis: heartEmojis, image: "heart", color: .red),
         Theme(name: "Pink", emojis: pinkEmojis, image: "paintbrush.pointed", color: .pink),
         Theme(name: "Girly", emojis: girlyEmojis, image: "figure.stand.dress", color: .purple)
@@ -55,10 +54,11 @@ struct ContentView: View {
     }
     
     var cards: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: CGFloat(100 - (emojis.count - 3) * 2)))]) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: CGFloat(100 - (emojis.count - 3) * 2)), spacing: 0)], spacing: 0) {
             ForEach(0..<emojis.count, id: \.self) { index in
                 CardView(content: emojis[index])
                     .aspectRatio(2/3, contentMode: .fit)
+                    .padding(4)
             }
         }
         .foregroundColor(color)
@@ -75,7 +75,10 @@ struct CardView: View {
             Group {
                 base.fill(.white)
                 base.strokeBorder(lineWidth: 2)
-                Text(content).font(.largeTitle)
+                Text(content)
+                    .font(.system(size: 100))
+                    .minimumScaleFactor(0.01)
+                    .aspectRatio(1, contentMode: .fit)
             }
             .opacity(isFaceUp ? 1:0)
             base.fill().opacity(isFaceUp ? 0:1)

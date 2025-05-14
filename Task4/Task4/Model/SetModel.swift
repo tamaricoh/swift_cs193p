@@ -8,12 +8,15 @@
 import Foundation
 
 struct SetModel {
-  private(set) var cards: [Card]
   private(set) var dealtCards: [Card] = []
+  private(set) var cards: [Card]
+  private(set) var discardedCards: [Card] = []
   private(set) var chosenCards: [Card] = []
 
-  private let initialDealCount = 16
+  private let initialDealCount = 12
+  private let maxDealCount = 20
   var score = 0
+  var isGaming = false
 
   init() {
     cards = []
@@ -34,55 +37,107 @@ struct SetModel {
       }
     }
     cards.shuffle()
-    dealInitialCards()
   }
 
   struct Card : Equatable, Identifiable{
     var isMatched = 0
+    var isFaceUp = false
     var chosen = false
     var content: CardFeatures
     var id: String
   }
 
-  mutating func dealInitialCards() {
-    let initialCards = cards.prefix(initialDealCount)
-    dealtCards = Array(initialCards)
-    cards.removeFirst(initialCards.count)
+  mutating func newGame() {
+    resetCards()
+    resetState()
+    cards.shuffle()
   }
 
-  mutating func dealMoreCards(dealBatchSize: Int) {
-    let nextCards = cards.prefix(dealBatchSize)
-    dealtCards.append(contentsOf: nextCards)
-    cards.removeFirst(nextCards.count)
+  private mutating func resetCards() {
+    cards = cards + discardedCards + dealtCards
+    for i in cards.indices {
+      cards[i].isFaceUp = false
+      cards[i].isMatched = 0
+      cards[i].chosen = false
+    }
   }
 
-  mutating func choose(_ card: Card) {
+  private mutating func resetState() {
+    dealtCards = []
+    discardedCards = []
+    chosenCards = []
+    score = 0
+  }
+
+  mutating func discardSet() {
     if chosenCards.count == 3 {
       if checkSet(){
         discard()
       }
-      unChoose()
+      resetChosenCards()
     }
-    if let chosenDealtIndex = dealtCards.firstIndex(where: { $0.id == card.id }) {
-      if let chosenIndex = chosenCards.firstIndex(where: { $0.id == card.id }) {
-        dealtCards[chosenDealtIndex].chosen = false
-        chosenCards.remove(at: chosenIndex)
+  }
+
+  mutating func dealMoreCards(dealBatchSize: Int) {
+    discardSet()
+    if isGaming && dealtCards.count < maxDealCount {
+      let nextCards = drawFromDeck(count: dealBatchSize)
+      flipNewCards(nextCards)
+    }
+  }
+
+  private mutating func drawFromDeck(count: Int) -> [Card] {
+    let drawn = cards.prefix(count)
+    dealtCards.append(contentsOf: drawn)
+    cards.removeFirst(drawn.count)
+    return Array(drawn)
+  }
+
+  private mutating func flipNewCards(_ cards: [Card]) {
+    for i in (dealtCards.count - cards.count)..<dealtCards.count {
+      dealtCards[i].isFaceUp = true
+    }
+  }
+
+
+  mutating func choose(_ card: Card) {
+    discardSet()
+
+    guard let dealtIndex = indexOfDealtCard(matching: card) else { return }
+
+    if isCardAlreadyChosen(card) {
+      unselectCard(at: dealtIndex, card: card)
+    } else {
+      selectCard(at: dealtIndex, card: card)
+    }
+
+    if chosenCards.count == 3 {
+      if checkSet() {
+        isMatchHandler(status: 1)
+        score += 1
+      } else {
+        isMatchHandler(status: -1)
       }
-      else {
-        if chosenCards.count < 3 {
-          dealtCards[chosenDealtIndex].chosen = true
-          chosenCards.append(card)
-        }
-        if chosenCards.count == 3 {
-          if checkSet(){
-            isMatchHandler(status: 1)
-            score += 1
-          }
-          else {
-            isMatchHandler(status: -1)
-          }
-        }
-      }
+    }
+  }
+
+  private func indexOfDealtCard(matching card: Card) -> Int? {
+    dealtCards.firstIndex(where: { $0.id == card.id })
+  }
+
+  private func isCardAlreadyChosen(_ card: Card) -> Bool {
+    chosenCards.contains(where: { $0.id == card.id })
+  }
+
+  private mutating func unselectCard(at index: Int, card: Card) {
+    dealtCards[index].chosen = false
+    chosenCards.removeAll(where: { $0.id == card.id })
+  }
+
+  private mutating func selectCard(at index: Int, card: Card) {
+    if chosenCards.count < 3 {
+      dealtCards[index].chosen = true
+      chosenCards.append(card)
     }
   }
 
@@ -111,11 +166,20 @@ struct SetModel {
 
   mutating func discard() {
     let chosenIDs = Set(chosenCards.map { $0.id })
-    dealtCards = dealtCards.filter { !chosenIDs.contains($0.id) }
-    dealMoreCards(dealBatchSize: initialDealCount - dealtCards.count)
+    let discarded = dealtCards.filter { chosenIDs.contains($0.id) }
+    discardedCards.append(contentsOf: discarded)
+    markDiscardedCardsUnchosen()
+    dealtCards.removeAll { chosenIDs.contains($0.id) }
   }
 
-  mutating func unChoose() {
+  private mutating func markDiscardedCardsUnchosen() {
+    for i in discardedCards.indices {
+      discardedCards[i].chosen = false
+    }
+  }
+
+
+  mutating func resetChosenCards() {
     for i in dealtCards.indices {
       if chosenCards.contains(where: { $0.id == dealtCards[i].id }) {
         dealtCards[i].chosen = false

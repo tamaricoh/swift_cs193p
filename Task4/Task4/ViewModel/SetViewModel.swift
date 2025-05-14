@@ -19,6 +19,10 @@ class SetViewModel : ObservableObject{
     return model.cards
   }
 
+  var discardedCards: Array<SetModel.Card> {
+    return model.discardedCards
+  }
+
   func dealMoreCards() {
     model.dealMoreCards(dealBatchSize: 1)
     objectWillChange.send()
@@ -39,6 +43,10 @@ class SetViewModel : ObservableObject{
   }
 
   func newGame() {
-    model = SetModel()
+//    model = SetModel()
+    model.newGame()
+    model.isGaming = true
+    model.dealMoreCards(dealBatchSize:12)
+
   }
 }

@@ -10,6 +10,8 @@ import SwiftUI
 struct CardView: View {
 
   let card: SetModel.Card
+  @State private var flipped = false
+
 
   init (_ card: SetModel.Card) {
     self.card = card
@@ -17,24 +19,45 @@ struct CardView: View {
 
   var body: some View {
     let base = RoundedRectangle(cornerRadius: 12)
-    return ZStack {
-      base.fill(.white)
-      if card.isMatched == 1 {
-        base.strokeBorder(.green, lineWidth: card.chosen ? 6 : 2)
-      }
-      if card.isMatched == 0 {
-        base.strokeBorder(card.chosen ? .orange : .black, lineWidth: card.chosen ? 6 : 2)
-      }
-      if card.isMatched == -1 {
-        base.strokeBorder(.red, lineWidth: card.chosen ? 6 : 2)
-      }
-      GeometryReader { geometry in
-        let shapeSize = geometry.size.width / 3
-        createCard(features: card.content, shapeSize: shapeSize)
-          .frame(width: geometry.size.width, height: geometry.size.height)
+    ZStack {
+      if card.isFaceUp {
+        ZStack {
+          base.fill(.white)
+          let borderColor: Color = {
+              switch card.isMatched {
+              case 1: return card.chosen ? .green : .black
+              case 0: return card.chosen ? .orange : .black
+              case -1: return card.chosen ? .red : .black
+              default: return .black
+              }
+          }()
+
+          let borderWidth: CGFloat = card.chosen ? 6 : 2
+
+          base.strokeBorder(borderColor, lineWidth: borderWidth)
+          GeometryReader { geometry in
+            let shapeSize = geometry.size.width / 3
+            createCard(features: card.content, shapeSize: shapeSize)
+              .frame(width: geometry.size.width, height: geometry.size.height)
+          }
+        }
+      } else {
+        ZStack {
+          base.fill(Color.purple)
+          base.stroke(Color.white, lineWidth: 2)
+        }
       }
     }
-    .aspectRatio(2/3, contentMode: .fit) 
+    .onAppear {
+      if card.isFaceUp && card.isMatched == 0 && !flipped {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+          flipped = true
+        }
+      }
+    }
+    .rotation3DEffect(.degrees(flipped ? 0 : 180), axis: (0, 1, 0))
+    .animation(.easeInOut(duration: 0.5), value: flipped)
+    .aspectRatio(2/3, contentMode: .fit)
     .frame(minWidth: 80, idealWidth: 100, maxWidth: .infinity,
            minHeight: 120, idealHeight: 150, maxHeight: .infinity)
   }
